@@ -79,7 +79,7 @@ class ViolationMapper implements ViolationMapperInterface
             $scope = $relativePath->getRoot();
             $it = new PropertyPathIterator($relativePath);
 
-            while ($this->acceptsErrors($scope) && null !== ($child = $this->matchChild($scope, $it))) {
+            while ($this->acceptsErrors($scope) && null !== ($child = $this->matchChild($scope, $it, $violation))) {
                 $scope = $child;
                 $it->next();
                 $match = true;
@@ -117,7 +117,7 @@ class ViolationMapper implements ViolationMapperInterface
         $mapping = $scope->getConfig()->getOption('error_mapping');
 
         while ($this->acceptsErrors($scope) && isset($mapping['.'])) {
-            $dotRule = new MappingRule($scope, '.', $mapping['.']);
+            $dotRule = new MappingRule($scope, '.', $this->resolveTargetPath($mapping['.'], $violation));
             $scope = $dotRule->getTarget();
             $mapping = $scope->getConfig()->getOption('error_mapping');
         }
@@ -141,12 +141,13 @@ class ViolationMapper implements ViolationMapperInterface
      * If a matching child is found, it is returned. Otherwise
      * null is returned.
      *
-     * @param FormInterface                 $form The form to search
-     * @param PropertyPathIteratorInterface $it   The iterator at its current position
+     * @param FormInterface                 $form      The form to search
+     * @param PropertyPathIteratorInterface $it        The iterator at its current position
+     * @param ConstraintViolation           $violation The constraint violation
      *
      * @return null|FormInterface The found match or null
      */
-    private function matchChild(FormInterface $form, PropertyPathIteratorInterface $it)
+    private function matchChild(FormInterface $form, PropertyPathIteratorInterface $it, ConstraintViolation $violation)
     {
         $target = null;
         $chunk = '';
@@ -158,7 +159,7 @@ class ViolationMapper implements ViolationMapperInterface
         foreach ($form->getConfig()->getOption('error_mapping') as $propertyPath => $targetPath) {
             // Dot rules are considered at the very end
             if ('.' !== $propertyPath) {
-                $rules[] = new MappingRule($form, $propertyPath, $targetPath);
+                $rules[] = new MappingRule($form, $propertyPath, $this->resolveTargetPath($targetPath, $violation));
             }
         }
 
@@ -276,5 +277,20 @@ class ViolationMapper implements ViolationMapperInterface
     private function acceptsErrors(FormInterface $form)
     {
         return $this->allowNonSynchronized || $form->isSynchronized();
+    }
+
+    /**
+     * @param string|callable     $targetPath
+     * @param ConstraintViolation $violation
+     *
+     * @return string
+     */
+    private function resolveTargetPath($targetPath, ConstraintViolation $violation)
+    {
+        if (is_callable($targetPath)) {
+            return call_user_func($targetPath, $violation);
+        }
+
+        return $targetPath;
     }
 }

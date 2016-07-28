@@ -1238,6 +1238,12 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
             array(self::LEVEL_2, '[foo]', 'address', 'address', 'address', 'street', 'street', 'data[foo].street.prop'),
             array(self::LEVEL_1, '[foo]', 'address', 'address', 'address', 'street', 'street', 'data[foo][street]'),
             array(self::LEVEL_1, '[foo]', 'address', 'address', 'address', 'street', 'street', 'data[foo][street].prop'),
+
+            // Callables
+            array(self::LEVEL_1, 'foo', function (ConstraintViolation $violation) { return 'address'; }, 'address', 'address', 'street', 'street', 'data.foo'),
+            array(self::LEVEL_1, 'foo', function (ConstraintViolation $violation) { return 'address'; }, 'address', 'address', 'street', 'street', 'data.foo.prop'),
+            array(self::LEVEL_0, 'foo', function (ConstraintViolation $violation) { return 'address'; }, 'address', 'address', 'street', 'street', 'data[foo]'),
+            array(self::LEVEL_0, 'foo', function (ConstraintViolation $violation) { return 'address'; }, 'address', 'address', 'street', 'street', 'data[foo].prop'),
         );
     }
 
