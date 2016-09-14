@@ -840,5 +840,40 @@ class RecursiveContextualValidator implements ContextualValidatorInterface
             $validator->initialize($context);
             $validator->validate($value, $constraint);
         }
+
+        $cascadingStrategy = $metadata->getCascadingStrategy();
+
+        // Quit unless we have an array or a cascaded object
+        if (!is_array($value) && !($cascadingStrategy & CascadingStrategy::CASCADE)) {
+            return;
+        }
+
+        $traversalStrategy = $metadata->getTraversalStrategy();
+
+        // Traverse only if IMPLICIT or TRAVERSE
+        if (!($traversalStrategy & (TraversalStrategy::IMPLICIT | TraversalStrategy::TRAVERSE))) {
+            return;
+        }
+
+        // If IMPLICIT, stop unless we deal with a Traversable
+        if ($traversalStrategy & TraversalStrategy::IMPLICIT && !$value instanceof \Traversable) {
+            return;
+        }
+
+        // If TRAVERSE, fail if we have no Traversable
+        if (!$value instanceof \Traversable) {
+            throw new ConstraintDefinitionException(sprintf(
+                'Traversal was enabled for "%s", but this class '.
+                'does not implement "\Traversable".',
+                get_class($value)
+            ));
+        }
+
+        $this->validateEachObjectIn(
+            $value,
+            $context->getPropertyPath(),
+            [$group],
+            $context
+        );
     }
 }
